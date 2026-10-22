@@ -25,7 +25,16 @@ survives restarts.
 
 Without Docker, see [AGENTS.md](AGENTS.md#run-and-test).
 
+## Checks
+
+Lint, format check, and all unit + integration tests in one command (needs
+`backend/.venv`, see AGENTS.md):
+
+```
+py scripts/run_checks.py
+```
+
 ## Status
 
-Early development: scaffolding and database are done; booking features are
-next. See the [issues](https://github.com/sanam-singh1104/bloom-beauty-bar/issues).
+Booking, listing, and cancelling work end to end with tests; deployment and
+observability are next. See the [issues](https://github.com/sanam-singh1104/bloom-beauty-bar/issues).

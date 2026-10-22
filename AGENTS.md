@@ -20,7 +20,8 @@ flag the conflict rather than guessing.
 | Backend       | Python, FastAPI                                           |
 | Database      | SQLAlchemy; SQLite by default, Postgres via `DATABASE_URL` |
 | Local run     | `docker compose up --build` (SQLite in a named volume)    |
-| Tests         | Unit + integration (backend and frontend)                 |
+| Tests         | pytest: `tests/unit` + `tests/integration` (real SQLite)  |
+| Lint/format   | ruff (`backend/pyproject.toml`), auto-run by an agent hook |
 | Deployment    | Public URL with CI/CD                                     |
 | Observability | Metrics, logs, traces on booking creation; error alert; on-call responder agent |
 
@@ -44,7 +45,11 @@ backend/
   app/models.py      Pydantic models (Service, BookingCreate, Booking)
   app/store.py       Store protocol + seed service list
   app/sql_store.py   SQLAlchemy Store (tables, seeding, queries)
-  tests/             pytest; each test gets a fresh SQLite file
+  app/errors.py      Validation errors -> {"detail", "errors"} 422 responses
+  tests/unit/        No app, no DB: validation rules, error messages, seed data
+  tests/integration/ HTTP API + store against a fresh SQLite file per test,
+                     incl. the full browse -> book -> list -> cancel journey
+  pyproject.toml     pytest markers + ruff config
   Dockerfile         built from repo root (copies frontend/ too)
   requirements.txt / requirements-dev.txt
 frontend/
@@ -55,6 +60,9 @@ frontend/
                            load it before the page script
   styles.css
 docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB
+scripts/run_checks.py  Lint + format check + all tests in one command
+agent-hooks/         ruff-on-edit Claude Code hook + optional git pre-commit
+.claude/             settings.json (registers the hook), skills/run-checks
 docs/                Project docs (see below)
 ```
 
@@ -95,15 +103,28 @@ and `.venv/bin/python`):
 py -m venv .venv
 .venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m uvicorn app.main:app --reload
-.venv\Scripts\python -m pytest
 ```
+
+**All checks (lint + format + every test), from the repo root:**
+```
+py scripts/run_checks.py            # add --fix, --unit, --integration, or -- <pytest args>
+```
+This is the `run-checks` skill (`.claude/skills/run-checks/`); run it before
+committing or closing an issue. Tests only: `pytest` from `backend/`
+(`-m unit` or `-m integration` to narrow).
+
+Python files are ruff-fixed and formatted automatically after every agent
+edit; leftover problems come back as a blocking hook error. See
+[agent-hooks/README.md](agent-hooks/README.md).
 
 ## Conventions
 - Services come from the database, never hardcoded in the frontend.
 - Booking validation lives in the backend; reject missing service, date/time,
   name, or contact with a clear message. The frontend may also validate, but
   the backend is authoritative.
-- Every feature needs tests that cover its acceptance criteria.
+- Every feature needs tests that cover its acceptance criteria: unit tests
+  for logic, an integration test for the behaviour over HTTP.
+- `py scripts/run_checks.py` must pass before a task is handed to QA.
 - Don't build anything listed under non-goals in the spec.
 - Never commit secrets; use `.env` (gitignored) and keep `.env.example` current.
 - Small, focused commits with clear messages.
@@ -112,3 +133,7 @@ py -m venv .venv
 - [product-spec.md](product-spec.md) — what to build
 - [docs/agent-team.md](docs/agent-team.md) — PM / Engineer / QA roles and the
   task workflow
+- [.claude/skills/run-checks/SKILL.md](.claude/skills/run-checks/SKILL.md) —
+  the run-checks procedure
+- [agent-hooks/README.md](agent-hooks/README.md) — the ruff hook and the
+  optional git pre-commit hook

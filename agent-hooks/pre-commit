@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Optional git pre-commit guardrail: blocks a commit if backend Python code
+# fails ruff lint or isn't ruff-formatted. Catches human edits too, not just
+# the agent's. Enable once per clone with:
+#   git config core.hooksPath agent-hooks
+# Bypass for a single commit (not recommended): git commit --no-verify
+root="$(git rev-parse --show-toplevel)"
+
+py=""
+for candidate in "$root/backend/.venv/Scripts/python.exe" "$root/backend/.venv/bin/python"; do
+  if [ -x "$candidate" ]; then py="$candidate"; break; fi
+done
+if [ -z "$py" ]; then
+  echo "pre-commit: backend/.venv not found; skipping ruff checks" >&2
+  exit 0
+fi
+
+cd "$root/backend" || exit 1
+status=0
+"$py" -m ruff check . || status=1
+"$py" -m ruff format --check . || status=1
+
+if [ "$status" -ne 0 ]; then
+  echo "" >&2
+  echo "pre-commit: ruff checks failed. Fix with: py scripts/run_checks.py --fix" >&2
+fi
+exit "$status"

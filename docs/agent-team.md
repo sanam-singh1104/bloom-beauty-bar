@@ -17,7 +17,8 @@ Turns [product-spec.md](../product-spec.md) into tasks.
 Implements tasks.
 - Builds exactly what the task and its acceptance criteria describe.
 - Follows the stack and conventions in [AGENTS.md](../AGENTS.md).
-- Writes unit tests alongside the code and makes sure existing tests pass.
+- Writes unit tests alongside the code and runs `py scripts/run_checks.py`
+  (the `run-checks` skill) until it passes before handing off.
 - Hands off with a short note: what changed, how to run it, anything QA
   should know.
 
@@ -25,8 +26,9 @@ Implements tasks.
 Verifies tasks independently.
 - Reads the acceptance criteria, not the Engineer's note, as the definition
   of done.
-- Writes and runs integration tests (and extra unit tests where needed) that
-  prove each criterion.
+- Writes and runs integration tests in `backend/tests/integration/` (and extra
+  unit tests where needed) that prove each criterion, then runs the full
+  `py scripts/run_checks.py` gate.
 - Checks the failure cases too, e.g. a booking missing a required field is
   rejected with a clear message.
 - Passes the task, or returns it to the Engineer with the failing criterion

@@ -18,8 +18,13 @@ def test_list_is_empty_initially(client):
 
 
 def test_list_shows_every_booking_with_details(client):
-    later = book(client, service_id=5, starts_at="2026-11-04T15:00",
-                 customer_name="Lerato K", customer_contact="lerato@example.com")
+    later = book(
+        client,
+        service_id=5,
+        starts_at="2026-11-04T15:00",
+        customer_name="Lerato K",
+        customer_contact="lerato@example.com",
+    )
     earlier = book(client)
 
     response = client.get("/api/bookings")
@@ -29,8 +34,9 @@ def test_list_shows_every_booking_with_details(client):
     # Every booking, soonest first.
     assert [b["id"] for b in bookings] == [earlier["id"], later["id"]]
     assert bookings[1] == later
-    assert {k: bookings[1][k] for k in
-            ("service_id", "starts_at", "customer_name", "customer_contact")} == {
+    assert {
+        k: bookings[1][k] for k in ("service_id", "starts_at", "customer_name", "customer_contact")
+    } == {
         "service_id": 5,
         "starts_at": "2026-11-04T15:00:00",
         "customer_name": "Lerato K",

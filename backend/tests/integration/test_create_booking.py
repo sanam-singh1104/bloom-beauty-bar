@@ -35,7 +35,8 @@ def test_accepts_email_or_phone_contact(client, contact):
 
 def test_trims_whitespace(client):
     response = client.post(
-        "/api/bookings", json={**VALID, "customer_name": "  Thandi M  ", "customer_contact": " a@b.co "}
+        "/api/bookings",
+        json={**VALID, "customer_name": "  Thandi M  ", "customer_contact": " a@b.co "},
     )
     assert response.status_code == 201
     assert response.json()["customer_name"] == "Thandi M"

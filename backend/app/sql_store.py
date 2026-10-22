@@ -83,9 +83,7 @@ class SqlStore:
             existing = set(session.scalars(select(ServiceRow.name)))
             for name, duration, price in SEED_SERVICES:
                 if name not in existing:
-                    session.add(
-                        ServiceRow(name=name, duration_minutes=duration, price_rand=price)
-                    )
+                    session.add(ServiceRow(name=name, duration_minutes=duration, price_rand=price))
 
     def list_services(self) -> list[Service]:
         with self.Session() as session:
