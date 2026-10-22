@@ -1,0 +1,53 @@
+:root {
+  --bg: #fdf7f8;
+  --card: #ffffff;
+  --text: #2d2327;
+  --muted: #8a7a80;
+  --accent: #c2577a;
+  --border: #eedde3;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+}
+
+header, main, footer {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+header { padding-top: 40px; }
+h1 { color: var(--accent); margin: 0; }
+.tagline { margin-top: 4px; color: var(--muted); }
+.muted { color: var(--muted); }
+
+.services {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+}
+
+.service {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+}
+
+.service-name { font-weight: 600; }
+.service-meta { color: var(--muted); font-size: 0.9rem; }
+.service-price { font-weight: 600; color: var(--accent); white-space: nowrap; }
+
+footer { padding-top: 24px; padding-bottom: 40px; font-size: 0.85rem; }

@@ -16,9 +16,9 @@ flag the conflict rather than guessing.
 ## Planned stack
 | Area          | Choice                                                    |
 |---------------|-----------------------------------------------------------|
-| Frontend      | JavaScript (framework TBD)                                |
+| Frontend      | Plain HTML/CSS/JS, no build step; served by FastAPI       |
 | Backend       | Python, FastAPI                                           |
-| Database      | TBD; services seeded at startup, bookings stored          |
+| Database      | In-memory store for now (`backend/app/store.py`); real DB in #6 |
 | Local run     | Docker Compose, one command                               |
 | Tests         | Unit + integration (backend and frontend)                 |
 | Deployment    | Public URL with CI/CD                                     |
@@ -26,22 +26,39 @@ flag the conflict rather than guessing.
 
 Record each decision here (and the reason) when it's made.
 
-## Project layout
-_To be filled in as the code is created._ Expected shape:
+- **Frontend served by the backend** (`StaticFiles` mounted at `/`), so the
+  page calls `/api/...` same-origin with no CORS or second server.
+- **Prices stored as whole rand** (`price_rand`), durations as minutes.
 
+## Project layout
 ```
-backend/     FastAPI app, models, seed data, tests
-frontend/    JavaScript UI, tests
-docs/        Project docs (see below)
-docker-compose.yml
+backend/
+  app/main.py      FastAPI app: API routes under /api, serves frontend/ at /
+  app/models.py    Pydantic models
+  app/store.py     In-memory store + seed services (replaced in #6)
+  tests/           pytest tests
+  requirements.txt
+frontend/
+  index.html, styles.css, app.js   Plain JS, calls /api
+docs/              Project docs (see below)
 ```
+
+## API
+- `GET /api/health` → `{"status": "ok"}`
+- `GET /api/services` → list of `{id, name, duration_minutes, price_rand}`
 
 ## Run and test
-_To be filled in as it's built._
+From `backend/` (Windows shown; on macOS/Linux use `python3` and
+`.venv/bin/python`):
 
-- Run locally: `TBD` (target: `docker compose up`)
-- Backend tests: `TBD`
-- Frontend tests: `TBD`
+```
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m uvicorn app.main:app --reload
+```
+Open http://localhost:8000. Tests: `.venv\Scripts\python -m pytest`.
+
+Docker Compose (`docker compose up`) arrives with issue #6.
 
 ## Conventions
 - Services come from the database, never hardcoded in the frontend.

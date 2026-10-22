@@ -12,6 +12,20 @@ to see and cancel bookings.
 See [product-spec.md](product-spec.md) for the full spec, including user
 stories, acceptance criteria, and non-goals.
 
+## Run locally
+
+Requires Python 3.11+. From `backend/` (Windows shown; on macOS/Linux use
+`python3` and `.venv/bin/python`):
+
+```
+py -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m uvicorn app.main:app --reload
+```
+
+Open http://localhost:8000. Run tests with `.venv\Scripts\python -m pytest`.
+
 ## Status
 
-Early development. Setup and run instructions will be added as the app is built.
+Early development. Data is held in memory for now; a real database and
+Docker Compose come next. See [AGENTS.md](AGENTS.md) for details.
