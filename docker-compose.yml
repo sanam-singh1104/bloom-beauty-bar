@@ -1,0 +1,34 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: sqlite:////data/bloom.db
+    volumes:
+      # SQLite database file lives here, so data survives restarts and rebuilds.
+      - bloom-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
+  # To switch to Postgres: add psycopg[binary] to backend/requirements.txt,
+  # uncomment this service, and set the backend's DATABASE_URL to
+  #   postgresql+psycopg://bloom:bloom@db:5432/bloom
+  # db:
+  #   image: postgres:17
+  #   environment:
+  #     POSTGRES_USER: bloom
+  #     POSTGRES_PASSWORD: bloom
+  #     POSTGRES_DB: bloom
+  #   volumes:
+  #     - pg-data:/var/lib/postgresql/data
+
+volumes:
+  bloom-data:
+  # pg-data:

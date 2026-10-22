@@ -39,3 +39,6 @@ pnpm-debug.log*
 *.swp
 .DS_Store
 Thumbs.db
+
+# --- Local data ---
+backend/data/

@@ -7,25 +7,25 @@ to see and cancel bookings.
 
 - **Backend:** Python (FastAPI)
 - **Frontend:** JavaScript
-- **Database:** services are seeded at startup; bookings are stored, listed, and deleted
+- **Database:** SQLite via SQLAlchemy (Postgres-ready); services seeded at startup
 
 See [product-spec.md](product-spec.md) for the full spec, including user
 stories, acceptance criteria, and non-goals.
 
 ## Run locally
 
-Requires Python 3.11+. From `backend/` (Windows shown; on macOS/Linux use
-`python3` and `.venv/bin/python`):
+With Docker, from the repo root:
 
 ```
-py -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
-.venv\Scripts\python -m uvicorn app.main:app --reload
+docker compose up --build
 ```
 
-Open http://localhost:8000. Run tests with `.venv\Scripts\python -m pytest`.
+Open http://localhost:8000. Data is stored in SQLite in a Docker volume, so it
+survives restarts.
+
+Without Docker, see [AGENTS.md](AGENTS.md#run-and-test).
 
 ## Status
 
-Early development. Data is held in memory for now; a real database and
-Docker Compose come next. See [AGENTS.md](AGENTS.md) for details.
+Early development: scaffolding and database are done; booking features are
+next. See the [issues](https://github.com/sanam-singh1104/bloom-beauty-bar/issues).

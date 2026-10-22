@@ -1,6 +1,8 @@
-"""In-memory data store. Replaced by a real database in issue #6."""
+"""Storage interface. Endpoints depend on this, not on a specific backend."""
 
-from .models import Service
+from typing import Protocol
+
+from .models import Booking, BookingCreate, Service
 
 SEED_SERVICES = [
     ("Haircut", 30, 150),
@@ -12,15 +14,19 @@ SEED_SERVICES = [
 ]
 
 
-class InMemoryStore:
-    def __init__(self) -> None:
-        self.services: list[Service] = []
+class Store(Protocol):
+    def init(self) -> None:
+        """Create the schema if needed and seed the services."""
 
-    def seed(self) -> None:
-        self.services = [
-            Service(id=i, name=name, duration_minutes=duration, price_rand=price)
-            for i, (name, duration, price) in enumerate(SEED_SERVICES, start=1)
-        ]
+    def close(self) -> None: ...
 
-    def list_services(self) -> list[Service]:
-        return list(self.services)
+    def list_services(self) -> list[Service]: ...
+
+    def get_service(self, service_id: int) -> Service | None: ...
+
+    def create_booking(self, booking: BookingCreate) -> Booking: ...
+
+    def list_bookings(self) -> list[Booking]: ...
+
+    def delete_booking(self, booking_id: int) -> bool:
+        """Delete a booking. Returns False if it didn't exist."""

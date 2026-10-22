@@ -13,13 +13,13 @@ bookings. No accounts, payments, availability logic, or rescheduling.
 criteria, and non-goals. If a task conflicts with the spec, the spec wins;
 flag the conflict rather than guessing.
 
-## Planned stack
+## Stack
 | Area          | Choice                                                    |
 |---------------|-----------------------------------------------------------|
 | Frontend      | Plain HTML/CSS/JS, no build step; served by FastAPI       |
 | Backend       | Python, FastAPI                                           |
-| Database      | In-memory store for now (`backend/app/store.py`); real DB in #6 |
-| Local run     | Docker Compose, one command                               |
+| Database      | SQLAlchemy; SQLite by default, Postgres via `DATABASE_URL` |
+| Local run     | `docker compose up --build` (SQLite in a named volume)    |
 | Tests         | Unit + integration (backend and frontend)                 |
 | Deployment    | Public URL with CI/CD                                     |
 | Observability | Metrics, logs, traces on booking creation; error alert; on-call responder agent |
@@ -29,36 +29,57 @@ Record each decision here (and the reason) when it's made.
 - **Frontend served by the backend** (`StaticFiles` mounted at `/`), so the
   page calls `/api/...` same-origin with no CORS or second server.
 - **Prices stored as whole rand** (`price_rand`), durations as minutes.
+- **Swappable storage:** endpoints depend on the `Store` protocol
+  (`app/store.py`) via `Depends(get_store)`. `SqlStore` is the only
+  implementation; the database is picked by `DATABASE_URL`.
+- **Schema via `create_all`**, no migrations yet. Seeding adds missing
+  services by name, so it's safe on every startup. Add Alembic if the schema
+  starts changing after real data exists.
+- **Booking times are naive local (salon) time.**
 
 ## Project layout
 ```
 backend/
-  app/main.py      FastAPI app: API routes under /api, serves frontend/ at /
-  app/models.py    Pydantic models
-  app/store.py     In-memory store + seed services (replaced in #6)
-  tests/           pytest tests
-  requirements.txt
+  app/main.py        FastAPI app: API routes under /api, serves frontend/ at /
+  app/models.py      Pydantic models (Service, BookingCreate, Booking)
+  app/store.py       Store protocol + seed service list
+  app/sql_store.py   SQLAlchemy Store (tables, seeding, queries)
+  tests/             pytest; each test gets a fresh SQLite file
+  Dockerfile         built from repo root (copies frontend/ too)
+  requirements.txt / requirements-dev.txt
 frontend/
   index.html, styles.css, app.js   Plain JS, calls /api
-docs/              Project docs (see below)
+docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB
+docs/                Project docs (see below)
 ```
 
 ## API
 - `GET /api/health` → `{"status": "ok"}`
 - `GET /api/services` → list of `{id, name, duration_minutes, price_rand}`
 
-## Run and test
-From `backend/` (Windows shown; on macOS/Linux use `python3` and
-`.venv/bin/python`):
+## Configuration
+- `DATABASE_URL`: SQLAlchemy URL. Default (local dev): a SQLite file at
+  `backend/data/bloom.db`. Compose uses `sqlite:////data/bloom.db`.
+  For Postgres: `postgresql+psycopg://user:pass@host:5432/db` and add
+  `psycopg[binary]` to requirements (see the commented `db` service in
+  `docker-compose.yml`).
 
+## Run and test
+Everything, from the repo root:
+```
+docker compose up --build
+```
+Open http://localhost:8000. Data persists in the `bloom-data` volume;
+`docker compose down -v` wipes it.
+
+Without Docker, from `backend/` (Windows shown; on macOS/Linux use `python3`
+and `.venv/bin/python`):
 ```
 py -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m pip install -r requirements-dev.txt
 .venv\Scripts\python -m uvicorn app.main:app --reload
+.venv\Scripts\python -m pytest
 ```
-Open http://localhost:8000. Tests: `.venv\Scripts\python -m pytest`.
-
-Docker Compose (`docker compose up`) arrives with issue #6.
 
 ## Conventions
 - Services come from the database, never hardcoded in the frontend.
