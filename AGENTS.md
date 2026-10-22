@@ -56,6 +56,15 @@ docs/                Project docs (see below)
 ## API
 - `GET /api/health` → `{"status": "ok"}`
 - `GET /api/services` → list of `{id, name, duration_minutes, price_rand}`
+- `POST /api/bookings` with `{service_id, starts_at, customer_name, customer_contact}`
+  (`starts_at` like `2026-11-03T10:30`) → `201` with the saved booking
+  (`id`, `created_at` added).
+
+Errors use one shape everywhere: `422` with
+`{"detail": "<one line for people>", "errors": [{field, message, missing}]}`.
+Absent, `null`, and blank values count as missing, e.g.
+`"Please provide: date and time, contact."`. Contact must look like a phone
+number (7–15 digits) or an email. An unknown `service_id` gets a 422 too.
 
 ## Configuration
 - `DATABASE_URL`: SQLAlchemy URL. Default (local dev): a SQLite file at

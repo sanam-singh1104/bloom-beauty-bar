@@ -18,6 +18,44 @@
       <p id="services-status" class="muted">Loading services…</p>
       <ul id="services" class="services"></ul>
     </section>
+
+    <section id="book">
+      <h2>Book an appointment</h2>
+
+      <form id="booking-form" class="card" novalidate>
+        <label for="service">Service</label>
+        <select id="service" name="service_id">
+          <option value="">Choose a service…</option>
+        </select>
+
+        <div class="row">
+          <div>
+            <label for="date">Date</label>
+            <input id="date" name="date" type="date">
+          </div>
+          <div>
+            <label for="time">Time</label>
+            <input id="time" name="time" type="time" step="900">
+          </div>
+        </div>
+
+        <label for="name">Your name</label>
+        <input id="name" name="customer_name" type="text" autocomplete="name" maxlength="200">
+
+        <label for="contact">Phone or email</label>
+        <input id="contact" name="customer_contact" type="text" autocomplete="email"
+               placeholder="e.g. 082 555 0101 or you@example.com">
+
+        <p id="booking-error" class="error" role="alert" hidden></p>
+        <button type="submit">Book now</button>
+      </form>
+
+      <div id="booking-confirmation" class="card confirmation" role="status" hidden>
+        <h3>You're booked!</h3>
+        <p id="confirmation-text"></p>
+        <button type="button" id="book-another" class="secondary">Book another</button>
+      </div>
+    </section>
   </main>
 
   <footer>

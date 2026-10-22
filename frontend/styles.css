@@ -5,6 +5,8 @@
   --muted: #8a7a80;
   --accent: #c2577a;
   --border: #eedde3;
+  --error: #b42318;
+  --error-bg: #fdecea;
 }
 
 * { box-sizing: border-box; }
@@ -51,3 +53,68 @@ h1 { color: var(--accent); margin: 0; }
 .service-price { font-weight: 600; color: var(--accent); white-space: nowrap; }
 
 footer { padding-top: 24px; padding-bottom: 40px; font-size: 0.85rem; }
+
+section { margin-bottom: 32px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 20px 16px;
+}
+
+form label {
+  display: block;
+  font-weight: 600;
+  margin: 14px 0 4px;
+}
+
+form > label:first-child { margin-top: 0; }
+
+form input, form select {
+  width: 100%;
+  font: inherit;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+}
+
+form input:focus, form select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+form [aria-invalid="true"] { border-color: var(--error); }
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+button {
+  font: inherit;
+  font-weight: 600;
+  margin-top: 18px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button:disabled { opacity: 0.6; cursor: wait; }
+button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+
+.error {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--error-bg);
+  color: var(--error);
+}
+
+.confirmation h3 { margin-top: 0; color: var(--accent); }
