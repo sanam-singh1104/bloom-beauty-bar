@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Manage bookings · Bloom Beauty Bar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <h1>Bloom Beauty Bar</h1>
+    <p class="tagline">Staff view</p>
+    <nav><a href="./">← Back to booking page</a></nav>
+  </header>
+
+  <main>
+    <section>
+      <div class="toolbar">
+        <h2>Manage bookings</h2>
+        <button type="button" id="refresh" class="secondary">Refresh</button>
+      </div>
+      <p id="bookings-status" class="muted" role="status">Loading bookings…</p>
+      <ul id="bookings" class="bookings"></ul>
+    </section>
+  </main>
+
+  <script src="common.js"></script>
+  <script src="manage.js"></script>
+</body>
+</html>

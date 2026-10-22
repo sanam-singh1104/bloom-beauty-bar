@@ -2,7 +2,7 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-from fastapi import Depends, FastAPI, Request, status
+from fastapi import Depends, FastAPI, HTTPException, Request, Response, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -101,6 +101,22 @@ def create_booking(booking: BookingCreate, store: Store = Depends(get_store)):
             [{"field": "service_id", "message": "The selected service doesn't exist", "missing": False}]
         )
     return store.create_booking(booking)
+
+
+@app.get("/api/bookings", response_model=list[Booking])
+def list_bookings(store: Store = Depends(get_store)) -> list[Booking]:
+    return store.list_bookings()
+
+
+@app.delete(
+    "/api/bookings/{booking_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses={404: {"description": "Booking not found"}},
+)
+def cancel_booking(booking_id: int, store: Store = Depends(get_store)) -> Response:
+    if not store.delete_booking(booking_id):
+        raise HTTPException(status_code=404, detail="Booking not found.")
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
 
 
 # Serve the frontend from the same origin so it can call /api without CORS.

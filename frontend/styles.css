@@ -118,3 +118,26 @@ button.secondary { background: transparent; color: var(--accent); border: 1px so
 }
 
 .confirmation h3 { margin-top: 0; color: var(--accent); }
+
+nav { margin-top: 8px; font-size: 0.9rem; }
+nav a { color: var(--accent); }
+
+.bookings { list-style: none; padding: 0; display: grid; gap: 12px; }
+
+.booking {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.booking-when { font-weight: 600; }
+.booking-service { color: var(--accent); font-weight: 600; }
+.booking-customer { color: var(--muted); font-size: 0.9rem; overflow-wrap: anywhere; }
+.booking button { margin-top: 0; }
+
+button.danger { background: transparent; color: var(--error); border: 1px solid var(--error); }
+
+.toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.toolbar button { margin-top: 0; }

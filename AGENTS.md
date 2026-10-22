@@ -48,7 +48,12 @@ backend/
   Dockerfile         built from repo root (copies frontend/ too)
   requirements.txt / requirements-dev.txt
 frontend/
-  index.html, styles.css, app.js   Plain JS, calls /api
+  index.html + app.js      Customer page: services list + booking form
+  manage.html + manage.js  Staff page: all bookings, cancel button (no auth;
+                           accounts are a non-goal)
+  common.js                Shared helpers (API_BASE, getJson, formatWhen);
+                           load it before the page script
+  styles.css
 docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB
 docs/                Project docs (see below)
 ```
@@ -59,6 +64,9 @@ docs/                Project docs (see below)
 - `POST /api/bookings` with `{service_id, starts_at, customer_name, customer_contact}`
   (`starts_at` like `2026-11-03T10:30`) → `201` with the saved booking
   (`id`, `created_at` added).
+- `GET /api/bookings` → every booking, soonest `starts_at` first.
+- `DELETE /api/bookings/{id}` → `204`; `404 {"detail": "Booking not found."}`
+  if it doesn't exist (or was already cancelled).
 
 Errors use one shape everywhere: `422` with
 `{"detail": "<one line for people>", "errors": [{field, message, missing}]}`.

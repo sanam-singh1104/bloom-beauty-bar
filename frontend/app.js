@@ -1,13 +1,6 @@
-// The backend serves this page, so API calls are same-origin.
-const API_BASE = "/api";
+// Booking page. Uses API_BASE, getJson, and formatWhen from common.js.
 
 let servicesById = new Map();
-
-async function getJson(path) {
-  const response = await fetch(`${API_BASE}${path}`);
-  if (!response.ok) throw new Error(`${path} returned ${response.status}`);
-  return response.json();
-}
 
 async function checkHealth() {
   const el = document.getElementById("api-status");
@@ -109,17 +102,6 @@ function showErrors(message, fields = []) {
   }
   errorBox.textContent = message || "";
   errorBox.hidden = !message;
-}
-
-function formatWhen(startsAt) {
-  return new Date(startsAt).toLocaleString("en-ZA", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
 }
 
 function showConfirmation(booking) {
