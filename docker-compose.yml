@@ -17,8 +17,7 @@ services:
       retries: 3
     restart: unless-stopped
 
-  # To switch to Postgres: add psycopg[binary] to backend/requirements.txt,
-  # uncomment this service, and set the backend's DATABASE_URL to
+  # To switch to Postgres: uncomment this service and set the backend's DATABASE_URL to
   #   postgresql+psycopg://bloom:bloom@db:5432/bloom
   # db:
   #   image: postgres:17

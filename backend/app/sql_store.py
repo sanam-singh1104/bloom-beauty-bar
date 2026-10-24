@@ -14,6 +14,18 @@ DEFAULT_DATABASE_URL = (
 )
 
 
+def normalize_database_url(database_url: str) -> str:
+    """Point bare Postgres URLs (as Render provides them) at the psycopg driver.
+
+    SQLAlchemy maps ``postgresql://`` to psycopg2 and doesn't know ``postgres://``;
+    we install psycopg (v3) instead.
+    """
+    for prefix in ("postgres://", "postgresql://"):
+        if database_url.startswith(prefix):
+            return "postgresql+psycopg://" + database_url.removeprefix(prefix)
+    return database_url
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -60,7 +72,7 @@ def _to_booking(row: BookingRow) -> Booking:
 
 class SqlStore:
     def __init__(self, database_url: str = DEFAULT_DATABASE_URL) -> None:
-        url = make_url(database_url)
+        url = make_url(normalize_database_url(database_url))
         connect_args = {}
         if url.get_backend_name() == "sqlite":
             # FastAPI runs sync endpoints in a threadpool.

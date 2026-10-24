@@ -17,5 +17,6 @@ COPY frontend /app/frontend
 RUN useradd --create-home bloom && mkdir /data && chown bloom /data
 USER bloom
 
+# Hosts like Render set PORT; locally it falls back to 8000.
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}"]

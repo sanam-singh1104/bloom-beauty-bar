@@ -1,0 +1,27 @@
+# Render Blueprint: one Docker web service + one managed Postgres database.
+# See docs/deployment.md. Spec: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: bloom-beauty-bar
+    runtime: docker
+    # Built from the repo root so the Dockerfile can copy frontend/ too.
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: .
+    plan: free
+    region: frankfurt
+    healthCheckPath: /api/health
+    envVars:
+      # Render gives a postgresql:// URL; the app switches it to the psycopg driver.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bloom-db
+          property: connectionString
+
+databases:
+  - name: bloom-db
+    databaseName: bloom
+    user: bloom
+    plan: free
+    # Same region as the web service so it connects over the private network.
+    region: frankfurt
+    ipAllowList: [] # no access from outside Render

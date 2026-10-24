@@ -37,6 +37,12 @@ Record each decision here (and the reason) when it's made.
   services by name, so it's safe on every startup. Add Alembic if the schema
   starts changing after real data exists.
 - **Booking times are naive local (salon) time.**
+- **Deployed to Render** via the `render.yaml` Blueprint: one Docker web
+  service plus managed Postgres (free plans, `frankfurt`). Chosen because one
+  file declares both the app and the database and Render injects the DB URL,
+  so no secrets are handled by hand. Bare `postgres(ql)://` URLs are rewritten
+  to `postgresql+psycopg://` in `sql_store.normalize_database_url`. See
+  [docs/deployment.md](docs/deployment.md).
 
 ## Project layout
 ```
@@ -50,7 +56,7 @@ backend/
   tests/integration/ HTTP API + store against a fresh SQLite file per test,
                      incl. the full browse -> book -> list -> cancel journey
   pyproject.toml     pytest markers + ruff config
-  Dockerfile         built from repo root (copies frontend/ too)
+  Dockerfile         built from repo root (copies frontend/ too); listens on $PORT (default 8000)
   requirements.txt / requirements-dev.txt
 frontend/
   index.html + app.js      Customer page: services list + booking form
@@ -60,6 +66,7 @@ frontend/
                            load it before the page script
   styles.css
 docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB
+render.yaml          Render Blueprint: web service + Postgres (docs/deployment.md)
 scripts/run_checks.py  Lint + format check + all tests in one command
 agent-hooks/         ruff-on-edit Claude Code hook + optional git pre-commit
 .claude/             settings.json (registers the hook), skills/run-checks
@@ -85,9 +92,11 @@ number (7–15 digits) or an email. An unknown `service_id` gets a 422 too.
 ## Configuration
 - `DATABASE_URL`: SQLAlchemy URL. Default (local dev): a SQLite file at
   `backend/data/bloom.db`. Compose uses `sqlite:////data/bloom.db`.
-  For Postgres: `postgresql+psycopg://user:pass@host:5432/db` and add
-  `psycopg[binary]` to requirements (see the commented `db` service in
-  `docker-compose.yml`).
+  For Postgres: `postgresql+psycopg://user:pass@host:5432/db` (psycopg is
+  installed; plain `postgresql://` / `postgres://` URLs are converted). See
+  the commented `db` service in `docker-compose.yml`.
+- `PORT`: port uvicorn listens on in the Docker image (default 8000; Render
+  sets it).
 
 ## Run and test
 Everything, from the repo root:
@@ -133,6 +142,7 @@ edit; leftover problems come back as a blocking hook error. See
 - [product-spec.md](product-spec.md) — what to build
 - [docs/agent-team.md](docs/agent-team.md) — PM / Engineer / QA roles and the
   task workflow
+- [docs/deployment.md](docs/deployment.md) — deploying to Render
 - [.claude/skills/run-checks/SKILL.md](.claude/skills/run-checks/SKILL.md) —
   the run-checks procedure
 - [agent-hooks/README.md](agent-hooks/README.md) — the ruff hook and the
