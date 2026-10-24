@@ -10,6 +10,9 @@ services:
     plan: free
     region: frankfurt
     healthCheckPath: /api/health
+    # Deploy a push to main only once its GitHub checks (the CI workflow) pass.
+    # See docs/release-process.md.
+    autoDeployTrigger: checksPass
     envVars:
       # Render gives a postgresql:// URL; the app switches it to the psycopg driver.
       - key: DATABASE_URL

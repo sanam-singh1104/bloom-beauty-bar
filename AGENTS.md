@@ -20,9 +20,10 @@ flag the conflict rather than guessing.
 | Backend       | Python, FastAPI                                           |
 | Database      | SQLAlchemy; SQLite by default, Postgres via `DATABASE_URL` |
 | Local run     | `docker compose up --build` (SQLite in a named volume)    |
-| Tests         | pytest: `tests/unit` + `tests/integration` (real SQLite)  |
+| Tests         | pytest: `tests/unit` + `tests/integration` (SQLite; Postgres in CI) |
 | Lint/format   | ruff (`backend/pyproject.toml`), auto-run by an agent hook |
-| Deployment    | Public URL with CI/CD                                     |
+| Deployment    | Render (`render.yaml`), live at https://bloom-beauty-bar.onrender.com |
+| CI/CD         | GitHub Actions (`.github/workflows/ci.yml`); Render deploys `main` after checks pass |
 | Observability | Metrics, logs, traces on booking creation; error alert; on-call responder agent |
 
 Record each decision here (and the reason) when it's made.
@@ -43,6 +44,11 @@ Record each decision here (and the reason) when it's made.
   so no secrets are handled by hand. Bare `postgres(ql)://` URLs are rewritten
   to `postgresql+psycopg://` in `sql_store.normalize_database_url`. See
   [docs/deployment.md](docs/deployment.md).
+- **CI on GitHub Actions; Render deploys only after CI passes**
+  (`autoDeployTrigger: checksPass`). Chosen over a deploy hook called from the
+  workflow: no secret to manage, and the deploy is always the exact commit that
+  passed. Integration tests run on SQLite and on Postgres, which is what
+  production uses. See [docs/release-process.md](docs/release-process.md).
 
 ## Project layout
 ```
@@ -67,6 +73,8 @@ frontend/
   styles.css
 docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB
 render.yaml          Render Blueprint: web service + Postgres (docs/deployment.md)
+.github/workflows/ci.yml  CI: lint, format, JS syntax, unit + integration tests
+                     (SQLite and Postgres), Docker build + smoke test
 scripts/run_checks.py  Lint + format check + all tests in one command
 agent-hooks/         ruff-on-edit Claude Code hook + optional git pre-commit
 .claude/             settings.json (registers the hook), skills/run-checks
@@ -95,6 +103,9 @@ number (7–15 digits) or an email. An unknown `service_id` gets a 422 too.
   For Postgres: `postgresql+psycopg://user:pass@host:5432/db` (psycopg is
   installed; plain `postgresql://` / `postgres://` URLs are converted). See
   the commented `db` service in `docker-compose.yml`.
+- `TEST_DATABASE_URL` (tests only): run integration tests against this
+  database instead of a temp SQLite file. It is wiped before and after every
+  test, so never point it at real data. CI sets it to a Postgres service container.
 - `PORT`: port uvicorn listens on in the Docker image (default 8000; Render
   sets it).
 
@@ -143,6 +154,8 @@ edit; leftover problems come back as a blocking hook error. See
 - [docs/agent-team.md](docs/agent-team.md) — PM / Engineer / QA roles and the
   task workflow
 - [docs/deployment.md](docs/deployment.md) — deploying to Render
+- [docs/release-process.md](docs/release-process.md) — push → CI → deploy →
+  live, and rollback
 - [.claude/skills/run-checks/SKILL.md](.claude/skills/run-checks/SKILL.md) —
   the run-checks procedure
 - [agent-hooks/README.md](agent-hooks/README.md) — the ruff hook and the

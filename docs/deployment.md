@@ -49,12 +49,10 @@ by the Blueprint.
 
 ## Later deploys
 
-With the Blueprint's defaults, Render rebuilds and redeploys on every push to
-`main`. Changes to `render.yaml` itself are applied by Render on the next sync
-of the Blueprint.
-
-Gating deploys on CI (tests must pass first) is the CI/CD half of issue #8 and
-isn't set up yet.
+Pushes to `main` deploy automatically, but **only after the GitHub Actions CI
+checks pass** (`autoDeployTrigger: checksPass`). Changes to `render.yaml`
+itself are applied by Render on the next sync of the Blueprint. The full flow,
+verification, and rollback are in [release-process.md](release-process.md).
 
 ## Things to know about the free plan
 

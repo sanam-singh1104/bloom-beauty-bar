@@ -3,7 +3,7 @@ testpaths = ["tests"]
 addopts = "--strict-markers"
 markers = [
     "unit: fast tests of backend logic, no app or database",
-    "integration: tests through the HTTP API or store against a real SQLite database",
+    "integration: tests through the HTTP API or store against a real database (SQLite, or TEST_DATABASE_URL)",
 ]
 filterwarnings = [
     # Starlette's TestClient warns about httpx; not our code.
