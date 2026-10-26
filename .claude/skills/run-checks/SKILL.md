@@ -16,12 +16,14 @@ It re-runs itself inside `backend/.venv` if that exists, runs every step even
 if an earlier one fails, prints a PASS/FAIL summary, and exits non-zero if
 anything failed.
 
-| Step         | What it runs (from `backend/`)        |
-|--------------|---------------------------------------|
-| ruff lint    | `ruff check .`                        |
-| ruff format  | `ruff format --check .`               |
-| js syntax    | `node --check frontend/*.js` (skipped if no node) |
-| tests        | `pytest` (unit + integration)         |
+| Step             | What it runs                                                   |
+|------------------|----------------------------------------------------------------|
+| ruff lint        | `ruff check .` in `backend/`, `incident-response/`, `mcp-server/` |
+| ruff format      | `ruff format --check .` in the same three                      |
+| js syntax        | `node --check frontend/*.js` (skipped if no node)              |
+| tests            | `pytest` in `backend/` (unit + integration)                    |
+| responder tests  | `pytest` in `incident-response/` (skipped with `--integration`) |
+| mcp-server tests | `pytest` in `mcp-server/`, with `mcp-server/.venv` if it exists (otherwise the MCP protocol tests are skipped) |
 
 Options:
 - `--fix` applies ruff's autofixes and formatting instead of only checking.

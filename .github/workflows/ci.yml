@@ -83,6 +83,15 @@ jobs:
           ruff format --check .
           pytest
 
+      # The bloom-stats MCP server (mcp-server/): stats + MCP protocol tests.
+      - name: MCP server lint, format and tests
+        working-directory: mcp-server
+        run: |
+          pip install -r requirements.txt
+          ruff check --output-format=github .
+          ruff format --check .
+          pytest
+
   docker:
     name: Docker image
     runs-on: ubuntu-latest

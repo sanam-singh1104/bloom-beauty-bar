@@ -7,7 +7,7 @@
     py scripts/run_checks.py -- -k cancel  # extra args after -- go to pytest
 
 (`python3` instead of `py` on macOS/Linux.) Uses backend/.venv if it exists.
-Covers backend/ and incident-response/ (the on-call responder). Exits non-zero
+Covers backend/, incident-response/ (the on-call responder) and mcp-server/. Exits non-zero
 if any step fails; all steps run regardless so you see everything at once.
 """
 
@@ -22,12 +22,13 @@ ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
 RESPONDER = ROOT / "incident-response"
+MCP_SERVER = ROOT / "mcp-server"
 
 
-def venv_python() -> Path | None:
+def venv_python(project: Path = BACKEND) -> Path | None:
     for candidate in (
-        BACKEND / ".venv" / "Scripts" / "python.exe",
-        BACKEND / ".venv" / "bin" / "python",
+        project / ".venv" / "Scripts" / "python.exe",
+        project / ".venv" / "bin" / "python",
     ):
         if candidate.exists():
             return candidate
@@ -62,7 +63,7 @@ def main() -> int:
     results: dict[str, bool] = {}
 
     # Each project has its own pyproject.toml (same ruff rules).
-    projects = [BACKEND, RESPONDER]
+    projects = [BACKEND, RESPONDER, MCP_SERVER]
     if args.fix:
         results["ruff fix"] = all(
             run(f"ruff fix {d.name}", [py, "-m", "ruff", "check", "--fix", "."], d)
@@ -101,6 +102,12 @@ def main() -> int:
     if not args.integration:
         results["responder tests"] = run(
             "responder tests", [py, "-m", "pytest", *args.pytest_args], RESPONDER
+        )
+        # mcp-server/.venv has the MCP SDK for the protocol tests; without it
+        # those are skipped and only the stats tests run.
+        mcp_py = str(venv_python(MCP_SERVER) or py)
+        results["mcp-server tests"] = run(
+            "mcp-server tests", [mcp_py, "-m", "pytest", *args.pytest_args], MCP_SERVER
         )
 
     print("\n=== summary ===")

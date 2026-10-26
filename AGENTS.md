@@ -107,7 +107,10 @@ render.yaml          Render Blueprint: web service + Postgres (docs/deployment.m
                      (SQLite and Postgres), Docker build + smoke test
 scripts/run_checks.py  Lint + format check + all tests in one command
 agent-hooks/         ruff-on-edit Claude Code hook + optional git pre-commit
-.claude/             settings.json (registers the hook), skills/run-checks
+.claude/             settings.json (registers the hook), skills/run-checks,
+                     agents/api-reviewer.md (read-only API contract reviewer)
+mcp-server/          bloom-stats MCP server: one read-only tool, get_booking_stats
+.mcp.json            Registers bloom-stats for Claude Code (needs approval)
 docs/                Project docs (see below)
 ```
 
@@ -182,6 +185,10 @@ edit; leftover problems come back as a blocking hook error. See
 - Every feature needs tests that cover its acceptance criteria: unit tests
   for logic, an integration test for the behaviour over HTTP.
 - `py scripts/run_checks.py` must pass before a task is handed to QA.
+- Before committing a change to the API contract (routes, models, error
+  shape), have the `api-reviewer` subagent review the diff.
+- New agent tools get the least access that works: read-only where possible,
+  no `.env`, no customer data. Record it in docs/permissions.md.
 - Don't build anything listed under non-goals in the spec.
 - Never commit secrets; use `.env` (gitignored) and keep `.env.example` current.
 - Small, focused commits with clear messages.
@@ -197,6 +204,10 @@ edit; leftover problems come back as a blocking hook error. See
   the no-customer-data rule
 - [incident-response/README.md](incident-response/README.md) — the on-call
   responder: setup, test alerts, safety limits
+- [docs/agent-extension-pack.md](docs/agent-extension-pack.md) — the 7 agent
+  pack items; [docs/demo.md](docs/demo.md) — demo script;
+  [docs/permissions.md](docs/permissions.md) — what each agent/tool can access
+- [mcp-server/README.md](mcp-server/README.md) — the bloom-stats MCP server
 - [.claude/skills/run-checks/SKILL.md](.claude/skills/run-checks/SKILL.md) —
   the run-checks procedure
 - [agent-hooks/README.md](agent-hooks/README.md) — the ruff hook and the

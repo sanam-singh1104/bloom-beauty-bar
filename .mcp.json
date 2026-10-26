@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "bloom-stats": {
+      "type": "stdio",
+      "command": "${BLOOM_MCP_PYTHON:-python3}",
+      "args": ["mcp-server/server.py"],
+      "env": {
+        "BLOOM_API_URL": "${BLOOM_API_URL:-http://localhost:8000}"
+      }
+    }
+  }
+}
