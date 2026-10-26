@@ -1,0 +1,83 @@
+# Grafana-managed alert rules, provisioned on startup (issue #9).
+# Edit here and run `docker compose restart grafana`; provisioned rules
+# can't be changed from the UI.
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: booking-creation
+    folder: Bloom Beauty Bar
+    interval: 1m
+    rules:
+      - uid: booking-create-5xx
+        title: Booking creation server errors
+        condition: C
+        data:
+          # A: exact number of 5xx responses on POST /api/bookings in the last
+          # 5 minutes: the counter now minus 5 minutes ago. A series that's
+          # newer than that counts in full (`or S`). Each app process has its
+          # own series (instance label), so there are no counter resets.
+          # (increase() would extrapolate, e.g. 2 errors would show as 3.9.)
+          # `or vector(0)` gives 0 instead of an empty result when there have
+          # been no 5xx responses, so the rule reads Normal, not No Data.
+          - refId: A
+            relativeTimeRange:
+              from: 600
+              to: 0
+            datasourceUid: prometheus
+            model:
+              refId: A
+              instant: true
+              range: false
+              expr: >-
+                sum(
+                  (
+                    http_server_request_duration_seconds_count{job="bloom-beauty-bar", http_route="/api/bookings", http_request_method="POST", http_response_status_code=~"5.."}
+                    - http_server_request_duration_seconds_count{job="bloom-beauty-bar", http_route="/api/bookings", http_request_method="POST", http_response_status_code=~"5.."} offset 5m
+                  )
+                  or http_server_request_duration_seconds_count{job="bloom-beauty-bar", http_route="/api/bookings", http_request_method="POST", http_response_status_code=~"5.."}
+                ) or vector(0)
+          - refId: B
+            datasourceUid: __expr__
+            model:
+              refId: B
+              type: reduce
+              expression: A
+              reducer: last
+          # C: fire on any server error at all.
+          - refId: C
+            datasourceUid: __expr__
+            model:
+              refId: C
+              type: threshold
+              expression: B
+              conditions:
+                - evaluator:
+                    type: gt
+                    params: [0]
+        # Belt and braces with `or vector(0)`: if the query still returns
+        # nothing (e.g. Prometheus just started), treat it as OK.
+        noDataState: OK
+        execErrState: Error
+        for: 0s
+        keepFiringFor: 0s
+        labels:
+          severity: critical
+          service: bloom-beauty-bar
+          endpoint: POST /api/bookings
+        annotations:
+          summary: >-
+            Server errors on booking creation (POST /api/bookings):
+            {{ humanize $values.B.Value }} in the last 5 minutes
+          description: >-
+            POST /api/bookings returned {{ humanize $values.B.Value }} 5xx
+            responses in the last 5 minutes, so customers may not be able to book. Check the
+            dashboard's "Booking errors" panel, then the "Booking logs" panel
+            for "Unhandled error: <ExceptionType>" lines and follow their
+            trace IDs to Tempo.
+          endpoint: POST /api/bookings
+          window: 5m
+          dashboard_url: http://localhost:3000/d/bloom-bookings?from=now-1h&to=now
+          # Links the rule to the dashboard's "Server errors (5xx)" panel.
+          __dashboardUid__: bloom-bookings
+          __panelId__: "4"

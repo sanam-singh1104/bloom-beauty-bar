@@ -31,6 +31,7 @@ All config is in `observability/`:
 | `tempo.yaml` | Single-process Tempo, local storage, 7-day retention |
 | `grafana/provisioning/datasources/` | Prometheus, Loki, Tempo, with log-to-trace and trace-to-log links |
 | `grafana/provisioning/dashboards/` + `grafana/dashboards/bloom-bookings.json` | The **Bloom: Booking requests** dashboard (Grafana's home page) |
+| `grafana/provisioning/alerting/booking-alerts.yaml` | The **Booking creation server errors** alert rule |
 
 Only the app (`:8000`) and Grafana (`127.0.0.1:3000`) are published. Data lives in
 the `prometheus-data`, `loki-data`, `tempo-data` and `grafana-data` volumes.
@@ -50,6 +51,48 @@ edit, log in as `admin` with `GRAFANA_ADMIN_PASSWORD` from `.env` (default
 - **Booking request latency**: p50 and p95.
 - **Recent booking traces** (Tempo) and **Booking logs** (Loki). A log line's
   `TraceID` link opens its trace. From a span, "Logs for this span" goes back.
+
+### Alert: Booking creation server errors
+
+A Grafana-managed rule in the **Bloom Beauty Bar** folder (group
+`booking-creation`), checked every minute:
+
+- **Query:** the exact number of 5xx responses on `POST /api/bookings` in
+  the last 5 minutes. That's the counter now minus 5 minutes ago, with
+  series younger than that counted in full. (`increase()` extrapolates, so
+  2 errors could read as 3.9.)
+- **Fires** as soon as that number is above 0 (`for: 0s`), and clears once
+  5 minutes pass with no new 5xx.
+- **No 5xx means Normal, not No Data:** the query ends in `or vector(0)`, and
+  `noDataState: OK` covers the case where Prometheus has no data at all.
+  Query failures go to `Error`.
+- **Labels:** `severity=critical`, `service=bloom-beauty-bar`,
+  `endpoint=POST /api/bookings`.
+- **Annotations:** summary and description with the count, `endpoint`,
+  `window: 5m`, `dashboard_url`, and a link to the dashboard's
+  "Server errors (5xx)" panel.
+
+No contact point is set up yet, so firing alerts are only visible in Grafana.
+Notifications come with the on-call responder (still to do).
+
+**Check its state:** go to **Alerting → Alert rules** and expand **Bloom
+Beauty Bar → booking-creation**. The state shows as Normal, Pending or
+Firing. Or use the API:
+`curl -u admin:admin http://localhost:3000/api/prometheus/grafana/api/v1/rules`.
+
+Provisioned rules can't be edited in the UI. To change one, edit the YAML and
+run `docker compose restart grafana`.
+
+**Test it:** make booking creation fail for real. This holds an exclusive
+SQLite lock for 25s, so writes time out with a 500 and nothing is changed:
+
+```
+docker compose exec backend python -c "import sqlite3,time; c=sqlite3.connect('/data/bloom.db', isolation_level=None); c.execute('BEGIN EXCLUSIVE'); time.sleep(25); c.execute('ROLLBACK')"
+```
+
+While that runs, submit a booking in a second terminal (or the site). It
+takes 5s, then returns 500. The rule fires within about a minute and returns
+to Normal about 5 minutes later.
 
 ### Metric names in Prometheus
 
@@ -133,6 +176,5 @@ To see raw console output instead, run the app with `TELEMETRY_EXPORTER=console`
 (the default outside compose).
 
 ## Not done yet (issue #9)
-- An alert on booking-creation errors (for example, the 5xx rate on
-  `http_route="/api/bookings"`), and the on-call responder agent.
+- A contact point / notifications, and the on-call responder agent.
 - A hosted telemetry backend for production (Render still logs to the console).

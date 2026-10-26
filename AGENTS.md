@@ -24,7 +24,7 @@ flag the conflict rather than guessing.
 | Lint/format   | ruff (`backend/pyproject.toml`), auto-run by an agent hook |
 | Deployment    | Render (`render.yaml`), live at https://bloom-beauty-bar.onrender.com |
 | CI/CD         | GitHub Actions (`.github/workflows/ci.yml`); Render deploys `main` after checks pass |
-| Observability | OpenTelemetry on booking creation; compose: Collector → Prometheus / Loki / Tempo → Grafana ([docs/observability.md](docs/observability.md)); alert + on-call agent still to do |
+| Observability | OpenTelemetry on booking creation; compose: Collector → Prometheus / Loki / Tempo → Grafana plus a provisioned Grafana alert on booking 5xx ([docs/observability.md](docs/observability.md)); on-call agent still to do |
 
 Record each decision here (and the reason) when it's made.
 
@@ -90,7 +90,7 @@ frontend/
 docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB, plus the
                      telemetry stack (otel-collector, prometheus, loki, tempo, grafana)
 observability/       Collector, Prometheus, Loki, Tempo config + Grafana
-                     datasources and the booking dashboard (provisioned)
+                     datasources, booking dashboard and alert rules (provisioned)
 render.yaml          Render Blueprint: web service + Postgres (docs/deployment.md)
 .github/workflows/ci.yml  CI: lint, format, JS syntax, unit + integration tests
                      (SQLite and Postgres), Docker build + smoke test
