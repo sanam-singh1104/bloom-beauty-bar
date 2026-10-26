@@ -24,7 +24,7 @@ flag the conflict rather than guessing.
 | Lint/format   | ruff (`backend/pyproject.toml`), auto-run by an agent hook |
 | Deployment    | Render (`render.yaml`), live at https://bloom-beauty-bar.onrender.com |
 | CI/CD         | GitHub Actions (`.github/workflows/ci.yml`); Render deploys `main` after checks pass |
-| Observability | Metrics, logs, traces on booking creation; error alert; on-call responder agent |
+| Observability | OpenTelemetry metrics, logs, traces on booking creation, console export ([docs/observability.md](docs/observability.md)); alert + on-call agent still to do |
 
 Record each decision here (and the reason) when it's made.
 
@@ -49,6 +49,14 @@ Record each decision here (and the reason) when it's made.
   workflow: no secret to manage, and the deploy is always the exact commit that
   passed. Integration tests run on SQLite and on Postgres, which is what
   production uses. See [docs/release-process.md](docs/release-process.md).
+- **OpenTelemetry SDK set up by hand, console export for now** (`app/telemetry.py`).
+  Our own ASGI middleware makes the request span and the
+  `http.server.request.duration` metric (route + status code); FastAPI's
+  built-in telemetry is turned off because it records client addresses and
+  submitted values. **Telemetry must never carry customer data or
+  credentials**: open spans with `telemetry.span()` (exception type only, no
+  message), and log ids and field names, never names/contacts. See
+  [docs/observability.md](docs/observability.md).
 
 ## Project layout
 ```
@@ -58,6 +66,7 @@ backend/
   app/store.py       Store protocol + seed service list
   app/sql_store.py   SQLAlchemy Store (tables, seeding, queries)
   app/errors.py      Validation errors -> {"detail", "errors"} 422 responses
+  app/telemetry.py   OpenTelemetry setup, request middleware, safe span helper
   tests/unit/        No app, no DB: validation rules, error messages, seed data
   tests/integration/ HTTP API + store against a fresh SQLite file per test,
                      incl. the full browse -> book -> list -> cancel journey
@@ -106,6 +115,8 @@ number (7–15 digits) or an email. An unknown `service_id` gets a 422 too.
 - `TEST_DATABASE_URL` (tests only): run integration tests against this
   database instead of a temp SQLite file. It is wiped before and after every
   test, so never point it at real data. CI sets it to a Postgres service container.
+- `TELEMETRY_EXPORTER`: `console` (default) or `none`.
+  `OTEL_METRIC_EXPORT_INTERVAL` sets the metric period in ms (compose: 10000).
 - `PORT`: port uvicorn listens on in the Docker image (default 8000; Render
   sets it).
 
@@ -156,6 +167,8 @@ edit; leftover problems come back as a blocking hook error. See
 - [docs/deployment.md](docs/deployment.md) — deploying to Render
 - [docs/release-process.md](docs/release-process.md) — push → CI → deploy →
   live, and rollback
+- [docs/observability.md](docs/observability.md) — traces, metrics, logs, and
+  the no-customer-data rule
 - [.claude/skills/run-checks/SKILL.md](.claude/skills/run-checks/SKILL.md) —
   the run-checks procedure
 - [agent-hooks/README.md](agent-hooks/README.md) — the ruff hook and the

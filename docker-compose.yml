@@ -7,6 +7,9 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: sqlite:////data/bloom.db
+      # Telemetry prints to the console (docker compose logs). Export metrics
+      # every 10s instead of the default 60s so they show up quickly.
+      OTEL_METRIC_EXPORT_INTERVAL: "10000"
     volumes:
       # SQLite database file lives here, so data survives restarts and rebuilds.
       - bloom-data:/data
