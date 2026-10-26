@@ -1,0 +1,11 @@
+{
+  "id": "20261026T111750Z-booking-creation-server-errors-8cd9da2b",
+  "alert": "Booking creation server errors",
+  "endpoint": "POST /api/bookings",
+  "state": "skipped",
+  "updated_at": "2026-10-26T11:17:51.173640+00:00",
+  "reason": "CLAUDE_CODE_OAUTH_TOKEN is not set; context and prompt are saved.",
+  "logs": 1,
+  "traces": 1,
+  "gather_errors": []
+}

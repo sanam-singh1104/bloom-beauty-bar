@@ -62,6 +62,13 @@ Each `incidents/<id>/` folder (gitignored) holds `alert.json` (Grafana's
 alert), `context.json` (the gathered telemetry), `prompt.md`, `report.md`,
 `claude-output.json` (cost, turns, session) and `status.json`.
 
+The folder stays gitignored so incidents aren't committed by accident. To keep
+one as a record, check it for secrets and customer data, then add it with
+`git add -f`. That's how the issue #9 acceptance run was committed:
+`20261026T112625Z-…` has the full investigation (`report.md`), and the other
+two are its dry run and the Grafana-to-responder run without a token. All
+three alerts were caused deliberately with the SQLite lock test.
+
 States go `received` → `gathering` → `queued` → `investigating` → `done`.
 Other outcomes are `failed` (the reason is in status/report), `skipped` (no
 token) or `dry_run`.

@@ -1,0 +1,10 @@
+{
+  "id": "20261026T111641Z-booking-creation-server-errors-sample00",
+  "alert": "Booking creation server errors",
+  "endpoint": "POST /api/bookings",
+  "state": "dry_run",
+  "updated_at": "2026-10-26T11:16:43.887524+00:00",
+  "logs": 4,
+  "traces": 4,
+  "gather_errors": []
+}

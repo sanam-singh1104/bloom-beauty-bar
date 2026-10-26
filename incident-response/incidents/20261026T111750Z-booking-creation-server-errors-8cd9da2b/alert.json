@@ -1,0 +1,32 @@
+{
+  "status": "firing",
+  "labels": {
+    "alertname": "Booking creation server errors",
+    "endpoint": "POST /api/bookings",
+    "grafana_folder": "Bloom Beauty Bar",
+    "service": "bloom-beauty-bar",
+    "severity": "critical"
+  },
+  "annotations": {
+    "dashboard_url": "http://localhost:3000/d/bloom-bookings?from=now-1h&to=now",
+    "description": "POST /api/bookings returned 1 5xx responses in the last 5 minutes, so customers may not be able to book. Check the dashboard's \"Booking errors\" panel, then the \"Booking logs\" panel for \"Unhandled error: <ExceptionType>\" lines and follow their trace IDs to Tempo.",
+    "endpoint": "POST /api/bookings",
+    "summary": "Server errors on booking creation (POST /api/bookings): 1 in the last 5 minutes",
+    "window": "5m"
+  },
+  "startsAt": "2026-10-26T11:17:40Z",
+  "endsAt": "0001-01-01T00:00:00Z",
+  "generatorURL": "http://localhost:3000/alerting/grafana/booking-create-5xx/view?orgId=1",
+  "fingerprint": "8cd9da2bb7de2ebf",
+  "silenceURL": "http://localhost:3000/alerting/silence/new?alertmanager=grafana&matcher=__alert_rule_uid__%3Dbooking-create-5xx&matcher=endpoint%3DPOST+%2Fapi%2Fbookings&matcher=service%3Dbloom-beauty-bar&matcher=severity%3Dcritical&orgId=1",
+  "dashboardURL": "http://localhost:3000/d/bloom-bookings?from=1793009860000&orgId=1&to=1793013470327",
+  "panelURL": "http://localhost:3000/d/bloom-bookings?from=1793009860000&orgId=1&to=1793013470327&viewPanel=4",
+  "ruleUID": "booking-create-5xx",
+  "values": {
+    "A": 1,
+    "B": 1,
+    "C": 1
+  },
+  "valueString": "[ var='A' labels={} type='query' value=1 ], [ var='B' labels={} type='reduce' value=1 ], [ var='C' labels={} type='threshold' value=1 ]",
+  "orgId": 1
+}

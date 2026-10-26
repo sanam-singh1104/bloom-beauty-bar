@@ -1,0 +1,12 @@
+{
+  "id": "20261026T112625Z-booking-creation-server-errors-sample00",
+  "alert": "Booking creation server errors",
+  "endpoint": "POST /api/bookings",
+  "state": "done",
+  "updated_at": "2026-10-26T11:27:07.173720+00:00",
+  "logs": 5,
+  "traces": 5,
+  "gather_errors": [],
+  "total_cost_usd": 0.0837813,
+  "num_turns": 4
+}

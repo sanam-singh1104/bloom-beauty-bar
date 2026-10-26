@@ -1,0 +1,74 @@
+{
+  "alert": {
+    "name": "Booking creation server errors",
+    "endpoint": "POST /api/bookings",
+    "summary": "Server errors on booking creation (POST /api/bookings): 1 in the last 5 minutes",
+    "alert_window": "5m",
+    "started_at": "2026-10-26T11:17:40+00:00",
+    "labels": {
+      "alertname": "Booking creation server errors",
+      "endpoint": "POST /api/bookings",
+      "grafana_folder": "Bloom Beauty Bar",
+      "service": "bloom-beauty-bar",
+      "severity": "critical"
+    },
+    "values": {
+      "A": 1,
+      "B": 1,
+      "C": 1
+    },
+    "dashboard_url": "http://localhost:3000/d/bloom-bookings?from=now-1h&to=now"
+  },
+  "window": {
+    "start": "2026-10-26T11:02:40+00:00",
+    "end": "2026-10-26T11:17:50.438252+00:00"
+  },
+  "request_counts_by_status": {
+    "201": 0,
+    "422": 0,
+    "500": 1
+  },
+  "error_logs": [
+    {
+      "time": "2026-10-26T11:17:04.579008+00:00",
+      "severity": "ERROR",
+      "message": "Unhandled error: OperationalError",
+      "trace_id": "65c3ff65fd79af5caaf2c74cc55d9c10",
+      "span_id": "20da7ec10c133792"
+    }
+  ],
+  "traces": [
+    {
+      "trace_id": "65c3ff65fd79af5caaf2c74cc55d9c10",
+      "spans": [
+        {
+          "name": "POST /api/bookings",
+          "span_id": "20da7ec10c133792",
+          "parent_span_id": null,
+          "kind": "SERVER",
+          "status": "ERROR",
+          "duration_ms": 5277.1,
+          "attributes": {
+            "http.response.status_code": 500,
+            "error.type": "OperationalError",
+            "http.request.method": "POST",
+            "http.route": "/api/bookings"
+          }
+        },
+        {
+          "name": "create_booking",
+          "span_id": "33f3816f55a2d924",
+          "parent_span_id": "20da7ec10c133792",
+          "kind": "INTERNAL",
+          "status": "ERROR",
+          "duration_ms": 5217.9,
+          "attributes": {
+            "booking.service_id": 1,
+            "error.type": "OperationalError"
+          }
+        }
+      ]
+    }
+  ],
+  "errors": []
+}
