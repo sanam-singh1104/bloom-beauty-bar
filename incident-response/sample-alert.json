@@ -1,0 +1,40 @@
+{
+  "receiver": "incident-responder",
+  "status": "firing",
+  "orgId": 1,
+  "alerts": [
+    {
+      "status": "firing",
+      "labels": {
+        "alertname": "Booking creation server errors",
+        "endpoint": "POST /api/bookings",
+        "grafana_folder": "Bloom Beauty Bar",
+        "service": "bloom-beauty-bar",
+        "severity": "critical"
+      },
+      "annotations": {
+        "summary": "Server errors on booking creation (POST /api/bookings): 2 in the last 5 minutes",
+        "description": "POST /api/bookings returned 2 5xx responses in the last 5 minutes, so customers may not be able to book.",
+        "endpoint": "POST /api/bookings",
+        "window": "5m",
+        "dashboard_url": "http://localhost:3000/d/bloom-bookings?from=now-1h&to=now"
+      },
+      "startsAt": "2026-10-26T10:48:00Z",
+      "endsAt": "0001-01-01T00:00:00Z",
+      "generatorURL": "http://localhost:3000/alerting/grafana/booking-create-5xx/view",
+      "fingerprint": "sample0000000001",
+      "values": {"A": 2, "B": 2, "C": 1},
+      "valueString": "[ var='A' value=2 ], [ var='B' value=2 ], [ var='C' value=1 ]"
+    }
+  ],
+  "groupLabels": {"alertname": "Booking creation server errors", "grafana_folder": "Bloom Beauty Bar"},
+  "commonLabels": {"alertname": "Booking creation server errors", "service": "bloom-beauty-bar"},
+  "commonAnnotations": {},
+  "externalURL": "http://localhost:3000/",
+  "version": "1",
+  "groupKey": "sample",
+  "truncatedAlerts": 0,
+  "title": "[FIRING:1] Booking creation server errors",
+  "state": "alerting",
+  "message": "Sample alert for testing the responder (incident-response/README.md)."
+}

@@ -1,0 +1,27 @@
+# Where Grafana sends alerts (issue #9). Provisioned on startup; edit here
+# and run `docker compose restart grafana`.
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: incident-responder
+    receivers:
+      - uid: incident-responder-webhook
+        type: webhook
+        settings:
+          url: http://incident-responder:8001/alerts
+          httpMethod: POST
+        # The responder ignores resolved notifications; no need to send them.
+        disableResolveMessage: true
+
+# This replaces Grafana's whole notification policy tree. Every alert goes to
+# the responder (it acknowledges and ignores alerts it doesn't handle).
+policies:
+  - orgId: 1
+    receiver: incident-responder
+    group_by: [grafana_folder, alertname]
+    group_wait: 10s
+    group_interval: 1m
+    # A still-firing alert is re-sent this often. The responder also ignores
+    # repeats within its own cooldown (30m).
+    repeat_interval: 4h

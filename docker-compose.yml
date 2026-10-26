@@ -105,6 +105,44 @@ services:
       retries: 6
     restart: unless-stopped
 
+  # On-call responder (incident-response/): Grafana posts firing alerts to
+  # POST /alerts; it gathers logs/traces/metrics and runs Claude Code headless,
+  # read-only, to investigate. Reports land in incident-response/incidents/.
+  incident-responder:
+    build: incident-response
+    ports:
+      - "127.0.0.1:8001:8001"
+    environment:
+      # From .env (gitignored). Without it, context is still gathered and saved,
+      # but no investigation is launched.
+      CLAUDE_CODE_OAUTH_TOKEN: ${CLAUDE_CODE_OAUTH_TOKEN:-}
+      RESPONDER_CLAUDE_MODEL: ${RESPONDER_CLAUDE_MODEL:-}
+      PROMETHEUS_URL: http://prometheus:9090
+      LOKI_URL: http://loki:3100
+      TEMPO_URL: http://tempo:3200
+    volumes:
+      - ./incident-response/incidents:/incidents
+      # Source for the investigation, read-only. Deliberately not the whole repo:
+      # no .env (the token) and no backend/data (customer bookings).
+      - ./backend/app:/workspace/backend/app:ro
+      - ./backend/tests:/workspace/backend/tests:ro
+      - ./frontend:/workspace/frontend:ro
+      - ./observability:/workspace/observability:ro
+      - ./docs:/workspace/docs:ro
+      - ./AGENTS.md:/workspace/AGENTS.md:ro
+      - ./product-spec.md:/workspace/product-spec.md:ro
+      - ./docker-compose.yml:/workspace/docker-compose.yml:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    restart: unless-stopped
+
   # To switch to Postgres: uncomment this service and set the backend's DATABASE_URL to
   #   postgresql+psycopg://bloom:bloom@db:5432/bloom
   # db:

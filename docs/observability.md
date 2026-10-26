@@ -32,6 +32,7 @@ All config is in `observability/`:
 | `grafana/provisioning/datasources/` | Prometheus, Loki, Tempo, with log-to-trace and trace-to-log links |
 | `grafana/provisioning/dashboards/` + `grafana/dashboards/bloom-bookings.json` | The **Bloom: Booking requests** dashboard (Grafana's home page) |
 | `grafana/provisioning/alerting/booking-alerts.yaml` | The **Booking creation server errors** alert rule |
+| `grafana/provisioning/alerting/notifications.yaml` | Contact point `incident-responder` (webhook) and the notification policy |
 
 Only the app (`:8000`) and Grafana (`127.0.0.1:3000`) are published. Data lives in
 the `prometheus-data`, `loki-data`, `tempo-data` and `grafana-data` volumes.
@@ -72,8 +73,12 @@ A Grafana-managed rule in the **Bloom Beauty Bar** folder (group
   `window: 5m`, `dashboard_url`, and a link to the dashboard's
   "Server errors (5xx)" panel.
 
-No contact point is set up yet, so firing alerts are only visible in Grafana.
-Notifications come with the on-call responder (still to do).
+**Notifications:** every alert goes to the `incident-responder` webhook
+contact point (`http://incident-responder:8001/alerts`). It's grouped by
+folder and alert name, sent after 10s, and repeated every 4h while firing.
+Resolved notifications aren't sent. The responder gathers logs, traces and
+counts, then runs Claude Code headless to investigate. See
+[incident-response/README.md](../incident-response/README.md).
 
 **Check its state:** go to **Alerting → Alert rules** and expand **Bloom
 Beauty Bar → booking-creation**. The state shows as Normal, Pending or
@@ -175,6 +180,7 @@ page. Metrics arrive about every 10s, and the dashboard refreshes every 10s.
 To see raw console output instead, run the app with `TELEMETRY_EXPORTER=console`
 (the default outside compose).
 
-## Not done yet (issue #9)
-- A contact point / notifications, and the on-call responder agent.
-- A hosted telemetry backend for production (Render still logs to the console).
+## Not done yet
+- A hosted telemetry backend, alerting and responder for production. Render
+  still logs to the console; the pipeline, alert and responder run only
+  under docker compose.

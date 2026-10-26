@@ -74,6 +74,15 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://bloom:bloom@localhost:5432/bloom_test
 
+      # The on-call responder (incident-response/) has its own deps and tests.
+      - name: Responder lint, format and tests
+        working-directory: incident-response
+        run: |
+          pip install -r requirements-dev.txt
+          ruff check --output-format=github .
+          ruff format --check .
+          pytest
+
   docker:
     name: Docker image
     runs-on: ubuntu-latest
@@ -111,3 +120,9 @@ jobs:
       - name: Container logs
         if: always()
         run: docker logs bloom || true
+
+      # Builds and checks the pinned Claude Code CLI installs; no token needed.
+      - name: Build responder image
+        run: |
+          docker build -t bloom-responder:ci incident-response
+          docker run --rm --entrypoint claude bloom-responder:ci --version

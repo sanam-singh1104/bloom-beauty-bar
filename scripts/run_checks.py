@@ -7,8 +7,8 @@
     py scripts/run_checks.py -- -k cancel  # extra args after -- go to pytest
 
 (`python3` instead of `py` on macOS/Linux.) Uses backend/.venv if it exists.
-Exits non-zero if any step fails; all steps run regardless so you see
-everything at once.
+Covers backend/ and incident-response/ (the on-call responder). Exits non-zero
+if any step fails; all steps run regardless so you see everything at once.
 """
 
 import argparse
@@ -21,6 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / "backend"
 FRONTEND = ROOT / "frontend"
+RESPONDER = ROOT / "incident-response"
 
 
 def venv_python() -> Path | None:
@@ -60,13 +61,23 @@ def main() -> int:
     py = sys.executable
     results: dict[str, bool] = {}
 
+    # Each project has its own pyproject.toml (same ruff rules).
+    projects = [BACKEND, RESPONDER]
     if args.fix:
-        results["ruff fix"] = run("ruff fix", [py, "-m", "ruff", "check", "--fix", "."], BACKEND)
-        results["ruff format"] = run("ruff format", [py, "-m", "ruff", "format", "."], BACKEND)
+        results["ruff fix"] = all(
+            run(f"ruff fix {d.name}", [py, "-m", "ruff", "check", "--fix", "."], d)
+            for d in projects
+        )
+        results["ruff format"] = all(
+            run(f"ruff format {d.name}", [py, "-m", "ruff", "format", "."], d) for d in projects
+        )
     else:
-        results["ruff lint"] = run("ruff lint", [py, "-m", "ruff", "check", "."], BACKEND)
-        results["ruff format"] = run(
-            "ruff format", [py, "-m", "ruff", "format", "--check", "."], BACKEND
+        results["ruff lint"] = all(
+            run(f"ruff lint {d.name}", [py, "-m", "ruff", "check", "."], d) for d in projects
+        )
+        results["ruff format"] = all(
+            run(f"ruff format {d.name}", [py, "-m", "ruff", "format", "--check", "."], d)
+            for d in projects
         )
 
     node = shutil.which("node")
@@ -86,6 +97,11 @@ def main() -> int:
         pytest_cmd += ["-m", "integration"]
     pytest_cmd += args.pytest_args
     results["tests"] = run("tests", pytest_cmd, BACKEND)
+    # The responder's tests are all fast and self-contained (no app, no DB).
+    if not args.integration:
+        results["responder tests"] = run(
+            "responder tests", [py, "-m", "pytest", *args.pytest_args], RESPONDER
+        )
 
     print("\n=== summary ===")
     for name, ok in results.items():

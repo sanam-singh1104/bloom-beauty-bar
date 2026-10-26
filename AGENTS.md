@@ -24,7 +24,7 @@ flag the conflict rather than guessing.
 | Lint/format   | ruff (`backend/pyproject.toml`), auto-run by an agent hook |
 | Deployment    | Render (`render.yaml`), live at https://bloom-beauty-bar.onrender.com |
 | CI/CD         | GitHub Actions (`.github/workflows/ci.yml`); Render deploys `main` after checks pass |
-| Observability | OpenTelemetry on booking creation; compose: Collector → Prometheus / Loki / Tempo → Grafana plus a provisioned Grafana alert on booking 5xx ([docs/observability.md](docs/observability.md)); on-call agent still to do |
+| Observability | OpenTelemetry on booking creation; compose: Collector → Prometheus / Loki / Tempo → Grafana plus a provisioned Grafana alert on booking 5xx, sent by webhook to the on-call responder (`incident-response/`), which runs Claude Code headless ([docs/observability.md](docs/observability.md)) |
 
 Record each decision here (and the reason) when it's made.
 
@@ -64,6 +64,14 @@ Record each decision here (and the reason) when it's made.
   protocol (OTLP) end to end, so a hosted backend later only changes the
   Collector's exporters. The Collector also scrubs PII-shaped attributes as a
   safety net. Image versions are pinned in `docker-compose.yml`.
+- **On-call responder** (`incident-response/`): a small FastAPI service that
+  Grafana's webhook contact point calls. It gathers Prometheus/Loki/Tempo
+  context and runs Claude Code headless (`claude --print`, pinned in its
+  Dockerfile) **read-only**: Read/Grep/Glob only, `--permission-mode dontAsk`,
+  and only specific source directories mounted (never `.env` or
+  `backend/data`). Auth is `CLAUDE_CODE_OAUTH_TOKEN` from `.env`. Reports go
+  to `incident-response/incidents/` (gitignored). Chosen over giving the
+  agent write access: it diagnoses; a human applies the fix.
 
 ## Project layout
 ```
@@ -90,7 +98,10 @@ frontend/
 docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB, plus the
                      telemetry stack (otel-collector, prometheus, loki, tempo, grafana)
 observability/       Collector, Prometheus, Loki, Tempo config + Grafana
-                     datasources, booking dashboard and alert rules (provisioned)
+                     datasources, booking dashboard, alert rule, contact point
+incident-response/   On-call responder: POST /alerts -> gather telemetry -> Claude
+                     Code headless investigation (own Dockerfile, tests, README)
+.env.example         Variables for .env (CLAUDE_CODE_OAUTH_TOKEN, Grafana password)
 render.yaml          Render Blueprint: web service + Postgres (docs/deployment.md)
 .github/workflows/ci.yml  CI: lint, format, JS syntax, unit + integration tests
                      (SQLite and Postgres), Docker build + smoke test
@@ -129,6 +140,9 @@ number (7–15 digits) or an email. An unknown `service_id` gets a 422 too.
   compose uses this), or `none`. `OTEL_METRIC_EXPORT_INTERVAL` sets the metric
   period in ms (compose: 10000).
 - `GRAFANA_ADMIN_PASSWORD` (compose, via `.env`): Grafana admin password, default `admin`.
+- `CLAUDE_CODE_OAUTH_TOKEN` (compose, via `.env`): the responder's Claude Code
+  token, from `claude setup-token`. Optional `RESPONDER_*` settings are in
+  [incident-response/README.md](incident-response/README.md).
 - `PORT`: port uvicorn listens on in the Docker image (default 8000; Render
   sets it).
 
@@ -137,7 +151,7 @@ Everything, from the repo root:
 ```
 docker compose up --build
 ```
-Open http://localhost:8000 (app) and http://localhost:3000 (Grafana). Data persists in the `bloom-data` volume;
+Open http://localhost:8000 (app) and http://localhost:3000 (Grafana); the responder listens on :8001. Data persists in the `bloom-data` volume;
 `docker compose down -v` wipes it.
 
 Without Docker, from `backend/` (Windows shown; on macOS/Linux use `python3`
@@ -181,6 +195,8 @@ edit; leftover problems come back as a blocking hook error. See
   live, and rollback
 - [docs/observability.md](docs/observability.md) — traces, metrics, logs, and
   the no-customer-data rule
+- [incident-response/README.md](incident-response/README.md) — the on-call
+  responder: setup, test alerts, safety limits
 - [.claude/skills/run-checks/SKILL.md](.claude/skills/run-checks/SKILL.md) —
   the run-checks procedure
 - [agent-hooks/README.md](agent-hooks/README.md) — the ruff hook and the
