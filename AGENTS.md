@@ -24,7 +24,7 @@ flag the conflict rather than guessing.
 | Lint/format   | ruff (`backend/pyproject.toml`), auto-run by an agent hook |
 | Deployment    | Render (`render.yaml`), live at https://bloom-beauty-bar.onrender.com |
 | CI/CD         | GitHub Actions (`.github/workflows/ci.yml`); Render deploys `main` after checks pass |
-| Observability | OpenTelemetry metrics, logs, traces on booking creation, console export ([docs/observability.md](docs/observability.md)); alert + on-call agent still to do |
+| Observability | OpenTelemetry on booking creation; compose: Collector → Prometheus / Loki / Tempo → Grafana ([docs/observability.md](docs/observability.md)); alert + on-call agent still to do |
 
 Record each decision here (and the reason) when it's made.
 
@@ -57,6 +57,13 @@ Record each decision here (and the reason) when it's made.
   credentials**: open spans with `telemetry.span()` (exception type only, no
   message), and log ids and field names, never names/contacts. See
   [docs/observability.md](docs/observability.md).
+- **Local telemetry stack in compose**: the app sends OTLP to an OpenTelemetry
+  Collector, which routes metrics to Prometheus (native OTLP receiver), logs
+  to Loki (native OTLP) and traces to Tempo. Grafana is provisioned from
+  files. Chosen because it's all open source, runs offline, and uses one
+  protocol (OTLP) end to end, so a hosted backend later only changes the
+  Collector's exporters. The Collector also scrubs PII-shaped attributes as a
+  safety net. Image versions are pinned in `docker-compose.yml`.
 
 ## Project layout
 ```
@@ -80,7 +87,10 @@ frontend/
   common.js                Shared helpers (API_BASE, getJson, formatWhen);
                            load it before the page script
   styles.css
-docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB
+docker-compose.yml   backend + `bloom-data` volume holding the SQLite DB, plus the
+                     telemetry stack (otel-collector, prometheus, loki, tempo, grafana)
+observability/       Collector, Prometheus, Loki, Tempo config + Grafana
+                     datasources and the booking dashboard (provisioned)
 render.yaml          Render Blueprint: web service + Postgres (docs/deployment.md)
 .github/workflows/ci.yml  CI: lint, format, JS syntax, unit + integration tests
                      (SQLite and Postgres), Docker build + smoke test
@@ -115,8 +125,10 @@ number (7–15 digits) or an email. An unknown `service_id` gets a 422 too.
 - `TEST_DATABASE_URL` (tests only): run integration tests against this
   database instead of a temp SQLite file. It is wiped before and after every
   test, so never point it at real data. CI sets it to a Postgres service container.
-- `TELEMETRY_EXPORTER`: `console` (default) or `none`.
-  `OTEL_METRIC_EXPORT_INTERVAL` sets the metric period in ms (compose: 10000).
+- `TELEMETRY_EXPORTER`: `console` (default), `otlp` (to `OTEL_EXPORTER_OTLP_ENDPOINT`;
+  compose uses this), or `none`. `OTEL_METRIC_EXPORT_INTERVAL` sets the metric
+  period in ms (compose: 10000).
+- `GRAFANA_ADMIN_PASSWORD` (compose, via `.env`): Grafana admin password, default `admin`.
 - `PORT`: port uvicorn listens on in the Docker image (default 8000; Render
   sets it).
 
@@ -125,7 +137,7 @@ Everything, from the repo root:
 ```
 docker compose up --build
 ```
-Open http://localhost:8000. Data persists in the `bloom-data` volume;
+Open http://localhost:8000 (app) and http://localhost:3000 (Grafana). Data persists in the `bloom-data` volume;
 `docker compose down -v` wipes it.
 
 Without Docker, from `backend/` (Windows shown; on macOS/Linux use `python3`

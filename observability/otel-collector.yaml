@@ -1,0 +1,78 @@
+# OpenTelemetry Collector: receives OTLP from the app and fans it out.
+#   metrics -> Prometheus (its OTLP receiver)
+#   logs    -> Loki (its OTLP endpoint)
+#   traces  -> Tempo (OTLP gRPC)
+
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 25
+
+  # Safety net for the no-customer-data rule. The app never sets these
+  # attributes, but if a library or a future change does, they are dropped
+  # here before anything is stored.
+  attributes/scrub:
+    actions:
+      - key: client.address
+        action: delete
+      - key: user_agent.original
+        action: delete
+      - key: url.query
+        action: delete
+      - key: url.full
+        action: delete
+      - key: exception.message
+        action: delete
+      - key: exception.stacktrace
+        action: delete
+      - pattern: ^http\.(request|response)\.header\..*
+        action: delete
+      - pattern: ^(customer_.*|.*\.customer_.*)$
+        action: delete
+      - pattern: (?i).*(password|secret|token|authorization|cookie).*
+        action: delete
+
+  batch: {}
+
+exporters:
+  otlp_http/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+    tls:
+      insecure: true
+  otlp_http/loki:
+    endpoint: http://loki:3100/otlp
+    tls:
+      insecure: true
+  otlp_grpc/tempo:
+    endpoint: tempo:4317
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp_http/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp_http/loki]
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp_grpc/tempo]

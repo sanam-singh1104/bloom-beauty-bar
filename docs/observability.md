@@ -4,9 +4,60 @@ Booking creation (`POST /api/bookings`) is the key user journey. It emits
 OpenTelemetry **traces, metrics and logs** that share a trace ID, so one
 request can be followed across all three. Code: `backend/app/telemetry.py`.
 
-For now every signal is printed to the console, one JSON object per line, so
-`docker compose logs` (and Render's log view) shows it. No external telemetry
-backend is set up yet.
+Where the signals go depends on `TELEMETRY_EXPORTER`:
+
+- **docker compose** (`otlp`): the app sends OTLP/HTTP to an OpenTelemetry
+  Collector, which forwards metrics to Prometheus, logs to Loki and traces to
+  Tempo. Grafana reads all three and has a provisioned dashboard.
+- **Render / plain uvicorn** (`console`, the default): one JSON object per line
+  on stdout, visible in the platform's log view.
+
+## Local pipeline (docker compose)
+
+```
+backend --OTLP/HTTP--> otel-collector --+--> prometheus  (metrics, OTLP receiver)
+                                        +--> loki        (logs, native /otlp)
+                                        +--> tempo       (traces, OTLP gRPC)
+grafana (http://localhost:3000) reads prometheus, loki, tempo
+```
+
+All config is in `observability/`:
+
+| File | What it sets up |
+|---|---|
+| `otel-collector.yaml` | OTLP receiver, `attributes/scrub` safety-net processor, exporters to the three stores |
+| `prometheus.yml` | OTLP ingestion settings (Prometheus runs with `--web.enable-otlp-receiver` and `created-timestamp-zero-ingestion`) |
+| `loki.yaml` | Single-process Loki, filesystem storage, 7-day retention |
+| `tempo.yaml` | Single-process Tempo, local storage, 7-day retention |
+| `grafana/provisioning/datasources/` | Prometheus, Loki, Tempo, with log-to-trace and trace-to-log links |
+| `grafana/provisioning/dashboards/` + `grafana/dashboards/bloom-bookings.json` | The **Bloom: Booking requests** dashboard (Grafana's home page) |
+
+Only the app (`:8000`) and Grafana (`127.0.0.1:3000`) are published. Data lives in
+the `prometheus-data`, `loki-data`, `tempo-data` and `grafana-data` volumes.
+
+Grafana lets anyone on this machine view dashboards without logging in. To
+edit, log in as `admin` with `GRAFANA_ADMIN_PASSWORD` from `.env` (default
+`admin` if unset). Provisioned dashboards can't be saved from the UI: edit
+`bloom-bookings.json` and run `docker compose restart grafana`.
+
+### Dashboard: Bloom: Booking requests
+
+- **Stats** for the selected range: booking requests, bookings created,
+  rejected (422), server errors (5xx), server error rate.
+- **Booking requests by status code**: `POST /api/bookings` per interval,
+  stacked by status.
+- **Booking errors**: 5xx plus rejections by reason (`invalid`, `unknown_service`).
+- **Booking request latency**: p50 and p95.
+- **Recent booking traces** (Tempo) and **Booking logs** (Loki). A log line's
+  `TraceID` link opens its trace. From a span, "Logs for this span" goes back.
+
+### Metric names in Prometheus
+
+OTLP names are translated: `http.server.request.duration` becomes
+`http_server_request_duration_seconds_{count,sum,bucket}`, and the counters
+become `bloom_bookings_created_total` and `bloom_bookings_rejected_total`.
+Attributes become labels (`http_route`, `http_response_status_code`,
+`http_request_method`, `reason`). `service.name` becomes `job="bloom-beauty-bar"`.
 
 ## What is emitted
 
@@ -49,13 +100,20 @@ How that's enforced:
   `error.type`. OpenTelemetry's default would add the message and stack trace.
 - `tests/integration/test_telemetry.py` submits a booking with a known name
   and contact, and fails if either shows up in any exported span, metric or log.
+- The Collector's `attributes/scrub` processor is a second line of defence.
+  It deletes client addresses, user agents, query strings, HTTP headers,
+  exception messages and stack traces, `customer_*` keys, and anything that
+  looks like a password, secret, token, cookie or authorization value, on
+  every signal before it is stored.
 
 ## Configuration
 
 | Variable | Effect |
 |---|---|
-| `TELEMETRY_EXPORTER` | `console` (default) or `none` to emit nothing |
+| `TELEMETRY_EXPORTER` | `console` (default), `otlp` (compose), or `none` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Where `otlp` sends (compose: `http://otel-collector:4318`) |
 | `OTEL_METRIC_EXPORT_INTERVAL` | Metric export period in ms (default 60000; compose sets 10000) |
+| `GRAFANA_ADMIN_PASSWORD` | Grafana admin password (compose, from `.env`; default `admin`) |
 | `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` | Override the `service.name` (`bloom-beauty-bar`) and other resource attributes |
 
 Tests install in-memory exporters (see `tests/conftest.py`), so test runs
@@ -64,16 +122,17 @@ print nothing.
 ## Inspecting it locally
 
 ```
-docker compose up --build -d
-# book something at http://localhost:8000, then:
-docker compose logs backend | grep '"Booking created'       # the log line; note its trace_id
-docker compose logs backend | grep <trace_id>               # its log + both spans
-docker compose logs backend | grep '"http.server.request.duration"'   # metrics (every 10s)
+docker compose up --build -d --wait
 ```
 
-Spans and logs are batched, so they appear a few seconds after the request.
+Make a few bookings at http://localhost:8000, including some with a missing
+field. Then open http://localhost:3000, which shows the dashboard on the home
+page. Metrics arrive about every 10s, and the dashboard refreshes every 10s.
+
+To see raw console output instead, run the app with `TELEMETRY_EXPORTER=console`
+(the default outside compose).
 
 ## Not done yet (issue #9)
-- Exporting to a real telemetry backend.
-- An alert on booking-creation errors (`http.route=/api/bookings` with
-  status 5xx, or `error.type` on the span), and the on-call responder agent.
+- An alert on booking-creation errors (for example, the 5xx rate on
+  `http_route="/api/bookings"`), and the on-call responder agent.
+- A hosted telemetry backend for production (Render still logs to the console).

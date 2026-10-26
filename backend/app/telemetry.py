@@ -1,7 +1,10 @@
 """OpenTelemetry setup: traces, metrics and logs that share a trace ID.
 
-Signals go to the console for now (one JSON object per line, so
-`docker compose logs` shows them). Set TELEMETRY_EXPORTER=none to turn that off.
+TELEMETRY_EXPORTER picks where signals go:
+- console (default): one JSON object per line on stdout.
+- otlp: OTLP over HTTP to OTEL_EXPORTER_OTLP_ENDPOINT. docker compose points
+  this at the OpenTelemetry Collector (see observability/).
+- none: nothing is exported.
 
 Privacy rule: telemetry never carries customer data or credentials. Spans,
 metrics and logs only get ids, routes, status codes, field *names* and
@@ -16,12 +19,12 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 
 from opentelemetry import metrics, trace
+from opentelemetry.exporter.otlp.proto.http._log_exporter import OTLPLogExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
 from opentelemetry.sdk._logs import LoggerProvider, LogRecordProcessor
-from opentelemetry.sdk._logs.export import (
-    BatchLogRecordProcessor,
-    ConsoleLogRecordExporter,
-)
+from opentelemetry.sdk._logs.export import BatchLogRecordProcessor, ConsoleLogRecordExporter
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
     ConsoleMetricExporter,
@@ -66,27 +69,19 @@ def configure(
 ) -> None:
     """Install the global providers once. Later calls do nothing.
 
-    With no arguments, exports to the console unless TELEMETRY_EXPORTER=none.
-    Tests pass in-memory processors/readers instead.
+    With no arguments, exports where TELEMETRY_EXPORTER says (see the module
+    docstring). Tests pass in-memory processors/readers instead.
     """
     global _configured
     if _configured:
         return
     _configured = True
 
-    if span_processor is None and os.environ.get("TELEMETRY_EXPORTER", "console") == "none":
-        return
     if span_processor is None:
-        span_processor = BatchSpanProcessor(
-            ConsoleSpanExporter(formatter=lambda span: span.to_json(indent=None) + "\n")
-        )
-        # Interval comes from OTEL_METRIC_EXPORT_INTERVAL (ms), default 60s.
-        metric_reader = PeriodicExportingMetricReader(
-            ConsoleMetricExporter(formatter=lambda data: data.to_json(indent=None) + "\n")
-        )
-        log_processor = BatchLogRecordProcessor(
-            ConsoleLogRecordExporter(formatter=lambda record: record.to_json(indent=None) + "\n")
-        )
+        pipeline = build_pipeline(os.environ.get("TELEMETRY_EXPORTER", "console"))
+        if pipeline is None:
+            return
+        span_processor, metric_reader, log_processor = pipeline
 
     # Also honours OTEL_SERVICE_NAME / OTEL_RESOURCE_ATTRIBUTES.
     resource = Resource.create({"service.name": SERVICE_NAME})
@@ -121,6 +116,32 @@ def span(name: str, kind: SpanKind = SpanKind.INTERNAL) -> Iterator[Span]:
             current.set_attribute("error.type", type(exc).__name__)
             current.set_status(Status(StatusCode.ERROR))
             raise
+
+
+def build_pipeline(
+    exporter: str,
+) -> tuple[SpanProcessor, MetricReader, LogRecordProcessor] | None:
+    """Batching processors and a periodic metric reader for one exporter kind."""
+    exporter = exporter.strip().lower()
+    if exporter == "none":
+        return None
+    if exporter == "console":
+        spans = ConsoleSpanExporter(formatter=lambda span: span.to_json(indent=None) + "\n")
+        metric_exporter = ConsoleMetricExporter(
+            formatter=lambda data: data.to_json(indent=None) + "\n"
+        )
+        logs = ConsoleLogRecordExporter(formatter=lambda record: record.to_json(indent=None) + "\n")
+    elif exporter == "otlp":
+        # Endpoint, headers and timeout come from the standard OTEL_EXPORTER_OTLP_* variables.
+        spans, metric_exporter, logs = OTLPSpanExporter(), OTLPMetricExporter(), OTLPLogExporter()
+    else:
+        raise ValueError(f"TELEMETRY_EXPORTER must be console, otlp or none, not {exporter!r}")
+    # Interval comes from OTEL_METRIC_EXPORT_INTERVAL (ms), default 60s.
+    return (
+        BatchSpanProcessor(spans),
+        PeriodicExportingMetricReader(metric_exporter),
+        BatchLogRecordProcessor(logs),
+    )
 
 
 def route_label(scope: dict) -> str:

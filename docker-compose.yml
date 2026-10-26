@@ -7,17 +7,100 @@ services:
       - "8000:8000"
     environment:
       DATABASE_URL: sqlite:////data/bloom.db
-      # Telemetry prints to the console (docker compose logs). Export metrics
-      # every 10s instead of the default 60s so they show up quickly.
+      # Traces, metrics and logs go to the Collector over OTLP/HTTP.
+      TELEMETRY_EXPORTER: otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+      # Export metrics every 10s instead of the default 60s.
       OTEL_METRIC_EXPORT_INTERVAL: "10000"
     volumes:
       # SQLite database file lives here, so data survives restarts and rebuilds.
       - bloom-data:/data
+    depends_on:
+      - otel-collector
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 10s
       timeout: 3s
       retries: 3
+    restart: unless-stopped
+
+  # --- Telemetry pipeline (config in observability/, see docs/observability.md) ---
+  # backend -> otel-collector -> prometheus (metrics), loki (logs), tempo (traces)
+  # Grafana on http://localhost:3000 reads all three.
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0
+    command: ["--config=/etc/otelcol/config.yaml"]
+    volumes:
+      - ./observability/otel-collector.yaml:/etc/otelcol/config.yaml:ro
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:v3.15.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=7d
+      - --web.enable-otlp-receiver
+      # Store a 0 at each counter's OTLP start time. Without it, a new series
+      # whose first sample is already 3 shows an increase() of 0, not 3.
+      - --enable-feature=created-timestamp-zero-ingestion
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:9090/-/ready"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.7.8
+    command: ["-config.file=/etc/loki/config.yaml"]
+    volumes:
+      - ./observability/loki.yaml:/etc/loki/config.yaml:ro
+      - loki-data:/loki
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.10.8
+    command: ["-config.file=/etc/tempo/config.yaml"]
+    volumes:
+      - ./observability/tempo.yaml:/etc/tempo/config.yaml:ro
+      - tempo-data:/var/tempo
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:13.2.3
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # Anyone on this machine can view dashboards without logging in.
+      # Log in as admin (password from GRAFANA_ADMIN_PASSWORD in .env, else "admin") to edit.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/bloom-bookings.json
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "-", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
     restart: unless-stopped
 
   # To switch to Postgres: uncomment this service and set the backend's DATABASE_URL to
@@ -33,4 +116,8 @@ services:
 
 volumes:
   bloom-data:
+  prometheus-data:
+  loki-data:
+  tempo-data:
+  grafana-data:
   # pg-data:
